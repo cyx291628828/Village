@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration shutdownHook="disable">
+
+    <Properties>
+        <!-- 控制台输出级别 -->
+        <Property name="LOG_DEBUG_LEVEL" value="debug"/>
+        <!-- 日志输出级别 -->
+        <Property name="LOG_INFO_LEVEL" value="info"/>
+        <!-- warn级别日志 -->
+        <Property name="LOG_WARN_LEVEL" value="warn"/>
+        <!-- error级别日志 -->
+        <Property name="LOG_ERROR_LEVEL" value="error"/>
+        <!-- 在当前目录下创建名为log目录做日志存放的目录 -->
+        <Property name="LOG_HOME" value="./log"/>
+        <!-- 档案日志存放目录 -->
+        <Property name="LOG_ARCHIVE" value="./log/history"/>
+        <!-- 模块名称， 影响日志配置名，日志文件名，根据自己项目进行配置 -->
+        <Property name="LOG_MODULE_NAME" value="lobby-server"/>
+        <!-- 日志文件大小，超过这个大小将被压缩 -->
+        <!--<Property name="LOG_MAX_SIZE" value="1024KB"/>-->
+        <!-- 保留多久的的日志，单位是时间表达式(该配置貌似不生效) -->
+        <Property name="LOG_DAYS" value="99"/>
+        <!--%d表示日期，%t表示线程名，%-5level：级别从左显示5个字符宽度
+        %c{5}表示输出最后n个包名路径 %msg：日志消息，%n是换行符 -->
+        <Property name="LOG_PATTERN" value="[%-5level] %d [%t] %msg%n"/>
+        <!--interval属性用来指定多久滚动一次，单位是时间表达式-->
+        <Property name="TIME_BASED_INTERVAL" value="1"/>
+    </Properties>
+
+    <Appenders>
+        <!-- 控制台输出 -->
+        <Console name="STDOUT" target="SYSTEM_OUT" direct="true">
+            <!--输出日志的格式-->
+            <PatternLayout pattern="${LOG_PATTERN}"/>
+            <Filters>
+                <!--如果是>=error拒绝，设置 onMismatch="NEUTRAL" 可以让日志经过后续的过滤器-->
+                <ThresholdFilter level="${LOG_WARN_LEVEL}" onMatch="DENY" onMismatch="NEUTRAL"/>
+                <!--控制台>=debug的日志（onMatch），其他的直接拒绝（onMismatch）-->
+                <ThresholdFilter level="${LOG_DEBUG_LEVEL}" onMatch="ACCEPT" onMismatch="DENY"/>
+            </Filters>
+        </Console>
+        <!-- 控制台异常 -->
+        <Console name="STDERR" target="SYSTEM_ERR" direct="true">
+            <!--输出日志的格式-->
+            <PatternLayout pattern="${LOG_PATTERN}"/>
+            <Filters>
+                <!--控制台只输出level及其以上级别的信息（onMatch），其他的直接拒绝（onMismatch）-->
+                <ThresholdFilter level="${LOG_WARN_LEVEL}" onMatch="ACCEPT" onMismatch="DENY"/>
+            </Filters>
+        </Console>
+
+        <!-- 这个会打印出所有的>=info && <error级别的日志，每次大小超过size或者满足TimeBasedTriggeringPolicy，则日志会自动存入按年月日建立的文件夹下面并进行压缩，作为存档-->
+        <!-- 异步日志会自动批量刷新，所以将immediateFlush属性设置为false-->
+        <RollingRandomAccessFile name="RollingRandomAccessFileInfo"
+                                 fileName="${LOG_HOME}/${LOG_MODULE_NAME}-info.log"
+                                 filePattern="${LOG_ARCHIVE}/${LOG_MODULE_NAME}-info-%d{yyyy-MM-dd}-%i.log.gz"
+                                 immediateFlush="false" append="true">
+            <Filters>
+                <!--如果是>=error拒绝，设置 onMismatch="NEUTRAL" 可以让日志经过后续的过滤器-->
+                <ThresholdFilter level="${LOG_WARN_LEVEL}" onMatch="DENY" onMismatch="NEUTRAL"/>
+                <!--如果是>=info输出-->
+                <ThresholdFilter level="${LOG_INFO_LEVEL}" onMatch="ACCEPT" onMismatch="DENY"/>
+            </Filters>
+            <PatternLayout pattern="${LOG_PATTERN}"/>
+            <Policies>
+                <!--interval属性用来指定多久滚动一次-->
+                <TimeBasedTriggeringPolicy interval="${TIME_BASED_INTERVAL}"/>
+                <!--时间和大小不建议同时指定，有概率会造成覆盖-->
+                <!--<SizeBasedTriggeringPolicy size="${LOG_MAX_SIZE}"/>-->
+            </Policies>
+
+
+            <DefaultRolloverStrategy max="${LOG_DAYS}">
+                <Delete basePath="${LOG_ARCHIVE}" maxDepth="1">
+                    <IfFileName glob="${LOG_MODULE_NAME}-info-*.log.gz">
+                        <!-- 保留多久内的日志：该时间单位必须>=时间表达式最小单位 -->
+                        <IfLastModified age="61d"/>
+                    </IfFileName>
+                </Delete>
+            </DefaultRolloverStrategy>
+        </RollingRandomAccessFile>
+
+        <!--只记录error级别以上的日志，与info级别的日志分不同的文件保存-->
+        <RollingRandomAccessFile name="RollingRandomAccessFileError"
+                                 fileName="${LOG_HOME}/${LOG_MODULE_NAME}-error.log"
+                                 filePattern="${LOG_ARCHIVE}/${LOG_MODULE_NAME}-error-%d{yyyy-MM-dd}-%i.log.gz"
+                                 immediateFlush="false" append="true">
+            <Filters>
+                <ThresholdFilter level="${LOG_WARN_LEVEL}" onMatch="ACCEPT" onMismatch="DENY"/>
+            </Filters>
+            <PatternLayout pattern="${LOG_PATTERN}"/>
+            <Policies>
+                <!--interval属性用来指定多久滚动一次-->
+                <TimeBasedTriggeringPolicy interval="${TIME_BASED_INTERVAL}"/>
+                <!--时间和大小不建议同时指定，有概率会造成覆盖-->
+                <!--<SizeBasedTriggeringPolicy size="${LOG_MAX_SIZE}"/>-->
+            </Policies>
+
+
+            <DefaultRolloverStrategy max="${LOG_DAYS}">
+                <Delete basePath="${LOG_ARCHIVE}" maxDepth="1">
+                    <IfFileName glob="${LOG_MODULE_NAME}-error-*.log.gz">
+                        <!-- 保留多久内的日志：该时间单位必须>=时间表达式最小单位 -->
+                        <IfLastModified age="61d"/>
+                    </IfFileName>
+                </Delete>
+            </DefaultRolloverStrategy>
+        </RollingRandomAccessFile>
+
+    </Appenders>
+
+    <Loggers>
+        <!-- 全局最低级别 -->
+        <Root level="${LOG_DEBUG_LEVEL}" includeLocation="false">
+            <!-- 注册的appender才会生效 -->
+            <AppenderRef ref="STDOUT"/>
+            <AppenderRef ref="STDERR"/>
+            <AppenderRef ref="RollingRandomAccessFileInfo"/>
+            <AppenderRef ref="RollingRandomAccessFileError"/>
+        </Root>
+
+        <!-- 第三方日志最低级别 -->
+        <logger name="org.springframework" level="info"/>
+        <logger name="org.apache.http" level="warn"/>
+        <logger name="io.netty" level="warn"/>
+
+    </Loggers>
+
+</Configuration>
